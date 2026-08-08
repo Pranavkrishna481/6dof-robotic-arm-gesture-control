@@ -46,10 +46,7 @@ You don't need the glove to use it, either. A browser-based console can take ove
 
 
 
-![Arm base position](media/arm1.jfjf)
-![Arm tall position](media/arm2.jfjf)
-![console](media/console.png)
-
+look at the media folder, for demonstration and pictures.
 
 
 
@@ -103,8 +100,14 @@ It talks to the arm's Arduino over USB using the **Web Serial API**, directly in
 
 ## CAD Files
 [Gripper_STL](https://www.thingiverse.com/thing:1748596)
+
+
 [base_STL](https://www.thingiverse.com/thing:1750025)
+
+
 [arm_joints_stl](https://www.thingiverse.com/thing:1838120)
+
+
 print all the stl files provided!
 
 

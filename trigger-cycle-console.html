@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trigger-Cycle · arm console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0f1218; --panel:#161a23; --panel2:#1c212c; --line:#2a3240; --line2:#39434f;
+  --cmd:#f0a33c; --act:#4fd1c5; --stop:#e2564a; --ok:#7ec96f;
+  --fg:#dfe3ea; --dim:#8b94a5; --faint:#5c6474;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Archivo',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--void); color:var(--fg); font-family:var(--sans); font-size:14px;
+  background-image:
+    radial-gradient(1100px 600px at 15% -10%, #1b2331 0%, transparent 60%),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:auto, 46px 46px, 46px 46px;
+  background-position:0 0, -1px -1px, -1px -1px;
+  background-blend-mode:normal,soft-light,soft-light;
+  padding:0 0 48px;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+header{border-bottom:1px solid var(--line);background:rgba(15,18,24,.86);backdrop-filter:blur(6px);position:sticky;top:0;z-index:20}
+.hbar{display:flex;align-items:center;gap:18px;padding:14px 0;flex-wrap:wrap}
+.brand{font-weight:600;letter-spacing:.02em;font-size:15px}
+.brand span{color:var(--faint);font-weight:400}
+.spacer{flex:1}
+
+button{font-family:var(--sans);font-size:13px;color:var(--fg);background:var(--panel2);
+  border:1px solid var(--line2);border-radius:3px;padding:8px 14px;cursor:pointer;transition:.12s}
+button:hover:not(:disabled){border-color:var(--faint);background:#232935}
+button:disabled{opacity:.38;cursor:not-allowed}
+button:focus-visible{outline:2px solid var(--cmd);outline-offset:2px}
+.primary{background:#243040;border-color:#3c536e}
+.danger{background:#2a1a19;border-color:#5e2e2a;color:#f0a49c}
+.danger:hover:not(:disabled){background:#3a201e;border-color:var(--stop)}
+
+select{font-family:var(--mono);font-size:12px;background:var(--panel2);color:var(--fg);
+  border:1px solid var(--line2);border-radius:3px;padding:7px 8px}
+
+.led{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.led i{width:7px;height:7px;border-radius:50%;background:var(--faint);display:block}
+.led.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.led.err i{background:var(--stop);box-shadow:0 0 8px var(--stop)}
+
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden}
+.seg button{border:none;border-radius:0;background:transparent;padding:7px 15px;font-size:12px;letter-spacing:.03em}
+.seg button.on{background:var(--cmd);color:#191308;font-weight:500}
+.seg.alt button.on{background:#33404f;color:var(--fg)}
+
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:22px;margin-top:22px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:5px}
+.card h2{margin:0;padding:13px 18px;font-size:11px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line)}
+.card .body{padding:6px 18px 16px}
+
+.banner{margin-top:16px;padding:10px 14px;border-radius:4px;font-size:13px;
+  background:#241d10;border:1px solid #4a3a17;color:#e8c37c}
+.banner.hide{display:none}
+
+.joint{padding:14px 0;border-bottom:1px solid var(--line)}
+.joint:last-child{border-bottom:none}
+.joint.locked{opacity:.42}
+.jhead{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.jname{font-size:14px;font-weight:500;letter-spacing:.01em}
+.jrange{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
+.jnums{margin-left:auto;font-family:var(--mono);font-size:13px;display:flex;gap:14px;align-items:baseline}
+.ncmd{color:var(--cmd);font-weight:500;min-width:44px;text-align:right}
+.nact{color:var(--act);font-size:11px;min-width:44px;text-align:right}
+
+.track{position:relative;height:26px}
+.track .rail{position:absolute;top:11px;left:0;right:0;height:3px;background:#232a36;border-radius:2px}
+.track .fill{position:absolute;top:11px;left:0;height:3px;background:var(--cmd);opacity:.5;border-radius:2px}
+.track .tick{position:absolute;top:4px;width:2px;height:17px;background:var(--act);
+  border-radius:1px;transform:translateX(-1px);transition:left .09s linear;box-shadow:0 0 6px rgba(79,209,197,.6)}
+.track input{position:absolute;inset:0;width:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:grab}
+.track input:focus-visible{outline:2px solid var(--cmd);outline-offset:3px;border-radius:3px}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:22px;border-radius:2px;
+  background:var(--cmd);border:1px solid #8a5c17;cursor:grab}
+.track input::-moz-range-thumb{width:13px;height:22px;border-radius:2px;background:var(--cmd);border:1px solid #8a5c17;cursor:grab}
+.track input:disabled{cursor:not-allowed}
+.track input:disabled::-webkit-slider-thumb{background:var(--faint);border-color:#4a5260}
+
+.legend{display:flex;gap:18px;font-family:var(--mono);font-size:10.5px;color:var(--faint);
+  letter-spacing:.05em;padding:10px 0 2px}
+.legend b{font-weight:400}
+.sw{display:inline-block;width:9px;height:3px;vertical-align:2px;margin-right:5px;border-radius:2px}
+
+.demos{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:12px}
+.demos button{text-align:left;font-size:12.5px;padding:9px 11px;position:relative}
+.demos button.live{background:#2b2411;border-color:var(--cmd);color:#f5cf94}
+.todo{font-family:var(--mono);font-size:9.5px;color:#c98d3a;letter-spacing:.06em}
+
+pre#log{font-family:var(--mono);font-size:11px;line-height:1.65;color:var(--dim);margin:0;
+  padding:12px 14px;background:#11151c;border:1px solid var(--line);border-radius:4px;
+  height:190px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+pre#log .tx{color:var(--cmd)}
+pre#log .rx{color:var(--act)}
+pre#log .sys{color:var(--faint)}
+pre#log .er{color:var(--stop)}
+
+pre#poses{font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--fg);margin:12px 0 0;
+  padding:12px 14px;background:#11151c;border:1px solid var(--line);border-radius:4px;
+  overflow-x:auto;white-space:pre}
+.hint{font-size:12px;color:var(--faint);line-height:1.6;margin:10px 0 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stopwrap{padding-top:14px;display:flex;gap:9px;flex-wrap:wrap}
+.stopwrap button{flex:1;min-width:130px;justify-content:center;text-align:center}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.unsupported{margin-top:22px;padding:14px 16px;border-radius:4px;background:#2a1a19;
+  border:1px solid #5e2e2a;color:#f0a49c;font-size:13px;line-height:1.6}
+.unsupported.hide{display:none}
+</style>
+</head>
+<body>
+
+<header><div class="wrap hbar">
+  <div class="brand">Trigger-Cycle <span>/ arm console</span></div>
+  <div class="led" id="led"><i></i><span id="ledtxt">no port</span></div>
+  <div class="spacer"></div>
+  <select id="baud" title="Match your firmware's Serial.begin()">
+    <option value="9600" selected>9600 baud</option>
+    <option value="115200">115200 baud</option>
+  </select>
+  <select id="proto" title="Which command set the firmware understands">
+    <option value="legacy" selected>v7 · single-key</option>
+    <option value="v8">v8 · full protocol</option>
+  </select>
+  <button id="conn" class="primary" onclick="toggleConn()">Connect</button>
+</div></header>
+
+<div class="wrap">
+
+  <div class="unsupported hide" id="unsup">
+    This browser has no Web Serial API. Use desktop Chrome, Edge, or Opera — Firefox and Safari don't implement it, and neither does Chrome on Android.
+  </div>
+
+  <div class="banner" id="protobanner">
+    Legacy mode: your v7 firmware only reads single-character keys, so choreography and stop work, but the joint sliders are disabled. Flash v8 and switch to full protocol to unlock them.
+  </div>
+
+  <div class="grid">
+
+    <div>
+      <div class="card">
+        <h2>Joints</h2>
+        <div class="body">
+          <div class="legend">
+            <b><span class="sw" style="background:var(--cmd)"></span>commanded</b>
+            <b><span class="sw" style="background:var(--act)"></span>reported by arm</b>
+          </div>
+          <div id="joints"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:22px">
+        <h2>Control ownership</h2>
+        <div class="body">
+          <p class="hint" style="margin-top:12px">The glove writes joint targets about 20 times a second. Whoever owns the arm wins; the other input is ignored.</p>
+          <div class="row" style="margin-top:12px">
+            <span class="seg alt"><button id="own0" class="on" onclick="setOwner(0)">Glove drives</button><button id="own1" onclick="setOwner(1)">App drives</button></span>
+          </div>
+          <div class="stopwrap">
+            <button class="danger" onclick="allStop()">Stop &amp; hold</button>
+            <button onclick="goCenter()">Return to center</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Choreography</h2>
+        <div class="body"><div class="demos" id="demos"></div></div>
+      </div>
+
+      <div class="card" style="margin-top:22px">
+        <h2>Pose capture</h2>
+        <div class="body">
+          <p class="hint" style="margin-top:12px">Drag the arm to a position, capture it, repeat. Output is shaped for the <code>squareCorner</code> variables in v7.</p>
+          <div class="row" style="margin-top:12px">
+            <button onclick="capture()">Capture pose</button>
+            <button onclick="copyPoses()">Copy as code</button>
+            <button onclick="clearPoses()">Clear</button>
+          </div>
+          <pre id="poses">// nothing captured yet</pre>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:22px">
+        <h2>Serial traffic</h2>
+        <div class="body" style="padding-top:14px"><pre id="log"></pre></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const JOINTS=[
+  {id:0,name:"Shoulder",min:-60,max:15,home:0,key:"1"},
+  {id:1,name:"Elbow",   min:0,  max:110,home:90,key:"2"},
+  {id:2,name:"Wrist 1", min:10, max:145,home:25,key:"3"},
+  {id:3,name:"Wrist 2", min:5,  max:170,home:90,key:"4"},
+  {id:4,name:"Gripper", min:60, max:173,home:122,key:"5"},
+  {id:5,name:"Base",    min:-90,max:90, home:0,  key:"6",parked:true}
+];
+const DEMOS=[
+  {id:0,name:"Calib sweep",key:"c"},{id:1,name:"Wave cascade",key:"w"},
+  {id:2,name:"Breathe",key:"b"},   {id:3,name:"Pose cycle",key:"p"},
+  {id:4,name:"Nod",key:"a"},       {id:5,name:"Square",key:"e",todo:true},
+  {id:6,name:"Preset 1",key:"s"},  {id:7,name:"Preset 2",key:"f"}
+];
+
+let port=null,writer=null,reader=null,keepReading=false;
+let cmd=JOINTS.map(j=>j.home), act=JOINTS.map(j=>j.home);
+let owner=0, liveDemo=null, poses=[], lastSent=[], rxbuf="";
+
+if(!("serial" in navigator)) document.getElementById("unsup").classList.remove("hide");
+
+document.getElementById("joints").innerHTML=JOINTS.map(j=>`
+<div class="joint${j.parked?" locked":""}" id="j${j.id}">
+  <div class="jhead">
+    <span class="jname">${j.name}</span>
+    <span class="jrange">${j.min}…${j.max}${j.parked?" · parked":""}</span>
+    <span class="jnums"><span class="ncmd" id="c${j.id}">${j.home}</span><span class="nact" id="a${j.id}">${j.home}</span></span>
+  </div>
+  <div class="track">
+    <div class="rail"></div><div class="fill" id="f${j.id}"></div><div class="tick" id="t${j.id}"></div>
+    <input type="range" min="${j.min}" max="${j.max}" step="1" value="${j.home}" id="s${j.id}"
+      aria-label="${j.name} angle" ${j.parked?"disabled":""}
+      oninput="onDrag(${j.id},this.value)" onchange="onRelease(${j.id},this.value)">
+  </div>
+</div>`).join("");
+
+document.getElementById("demos").innerHTML=DEMOS.map(d=>
+`<button id="d${d.id}" onclick="runDemo(${d.id})">${d.name}${d.todo?' <span class="todo">needs corners</span>':""}</button>`).join("");
+
+function log(txt,cls){
+  const el=document.getElementById("log");
+  const line=document.createElement("span");
+  line.className=cls||"sys"; line.textContent=txt+"\n";
+  el.appendChild(line);
+  while(el.childNodes.length>300) el.removeChild(el.firstChild);
+  el.scrollTop=el.scrollHeight;
+}
+function setLed(state,txt){
+  const l=document.getElementById("led");
+  l.className="led"+(state==="on"?" on":state==="err"?" err":"");
+  document.getElementById("ledtxt").textContent=txt;
+}
+function proto(){return document.getElementById("proto").value}
+function isLegacy(){return proto()==="legacy"}
+
+document.getElementById("proto").addEventListener("change",()=>{
+  document.getElementById("protobanner").classList.toggle("hide",!isLegacy());
+  refreshLocks();
+  log("# command set: "+(isLegacy()?"v7 single-key":"v8 protocol"));
+});
+
+function refreshLocks(){
+  JOINTS.forEach(j=>{
+    const blocked=j.parked||isLegacy()||owner===0;
+    document.getElementById("s"+j.id).disabled=blocked;
+    document.getElementById("j"+j.id).classList.toggle("locked",blocked);
+  });
+}
+
+async function toggleConn(){
+  if(port){await disconnect();return}
+  try{
+    port=await navigator.serial.requestPort();
+    await port.open({baudRate:+document.getElementById("baud").value});
+    writer=port.writable.getWriter();
+    document.getElementById("conn").textContent="Disconnect";
+    setLed("on","live · "+document.getElementById("baud").value);
+    log("# port opened at "+document.getElementById("baud").value+" baud");
+    if(!isLegacy()) send("T 1");
+    keepReading=true; readLoop();
+  }catch(e){
+    port=null; setLed("err","failed");
+    log("! "+e.message,"er");
+  }
+}
+
+async function disconnect(){
+  keepReading=false;
+  try{ if(reader){await reader.cancel(); reader=null} }catch(e){}
+  try{ if(writer){writer.releaseLock(); writer=null} }catch(e){}
+  try{ await port.close() }catch(e){}
+  port=null;
+  document.getElementById("conn").textContent="Connect";
+  setLed("off","no port"); log("# port closed");
+}
+
+async function readLoop(){
+  const dec=new TextDecoder();
+  reader=port.readable.getReader();
+  try{
+    while(keepReading){
+      const {value,done}=await reader.read();
+      if(done)break;
+      rxbuf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=rxbuf.indexOf("\n"))>=0){
+        const line=rxbuf.slice(0,i).replace(/\r$/,""); rxbuf=rxbuf.slice(i+1);
+        if(line) handleLine(line);
+      }
+    }
+  }catch(e){ log("! read: "+e.message,"er") }
+  finally{ try{reader.releaseLock()}catch(e){} }
+}
+
+function handleLine(line){
+  if(line.startsWith("#")){
+    const p=line.slice(1).trim().split(/\s+/).map(Number);
+    if(p.length>=7&&p.every(n=>!isNaN(n))){
+      owner=p[0]; setOwnerUI(owner);
+      for(let i=0;i<6;i++) act[i]=p[i+1];
+      paintActual();
+      return;
+    }
+  }
+  log("< "+line,"rx");
+}
+
+async function send(s){
+  log("> "+s,"tx");
+  if(!writer)return;
+  try{ await writer.write(new TextEncoder().encode(s+"\n")) }
+  catch(e){ log("! write: "+e.message,"er") }
+}
+
+function onDrag(i,v){
+  cmd[i]=+v;
+  document.getElementById("c"+i).textContent=v;
+  paintCmd(i);
+  const now=performance.now();
+  if(!lastSent[i]||now-lastSent[i]>70){ lastSent[i]=now; send("J "+i+" "+v) }
+}
+function onRelease(i,v){ lastSent[i]=0; send("J "+i+" "+v) }
+
+function paintCmd(i){
+  const j=JOINTS[i], pct=(cmd[i]-j.min)/(j.max-j.min)*100;
+  document.getElementById("f"+i).style.width=pct+"%";
+}
+function paintActual(){
+  JOINTS.forEach((j,i)=>{
+    const pct=Math.max(0,Math.min(100,(act[i]-j.min)/(j.max-j.min)*100));
+    document.getElementById("t"+i).style.left=pct+"%";
+    document.getElementById("a"+i).textContent=Math.round(act[i]);
+  });
+}
+
+function setOwnerUI(o){
+  document.getElementById("own0").className=o?"":"on";
+  document.getElementById("own1").className=o?"on":"";
+  refreshLocks();
+}
+function setOwner(o){
+  owner=o; setOwnerUI(o);
+  if(isLegacy()) log("# ownership needs v8 firmware — not sent");
+  else send("M "+o);
+}
+
+function runDemo(id){
+  const d=DEMOS[id];
+  if(liveDemo!==null) document.getElementById("d"+liveDemo).classList.remove("live");
+  liveDemo=id; document.getElementById("d"+id).classList.add("live");
+  if(isLegacy()) send(d.key); else { if(owner===0)setOwner(1); send("D "+id) }
+}
+function allStop(){
+  if(liveDemo!==null){ document.getElementById("d"+liveDemo).classList.remove("live"); liveDemo=null }
+  send(isLegacy()?"h":"H");
+}
+function goCenter(){
+  if(isLegacy()){ log("# center needs v8 firmware — not sent"); return }
+  JOINTS.forEach((j,i)=>{
+    if(j.parked)return;
+    cmd[i]=j.home; document.getElementById("s"+i).value=j.home;
+    document.getElementById("c"+i).textContent=j.home; paintCmd(i);
+  });
+  send("P "+JOINTS.slice(0,5).map(j=>j.home).join(" "));
+}
+
+function capture(){
+  poses.push(cmd.slice(0,5).map(Math.round));
+  renderPoses(); log("# captured pose "+poses.length);
+}
+function clearPoses(){ poses=[]; renderPoses() }
+function renderPoses(){
+  const el=document.getElementById("poses");
+  if(!poses.length){ el.textContent="// nothing captured yet"; return }
+  el.textContent=poses.map((p,i)=>{
+    const n=i+1;
+    return `squareCorner${n}Shoulder = ${p[0]}, squareCorner${n}Elbow = ${p[1]},\n`+
+           `squareCorner${n}Wrist1 = ${p[2]}, squareCorner${n}Wrist2 = ${p[3]}, squareCorner${n}Gripper = ${p[4]};`;
+  }).join("\n\n");
+}
+function copyPoses(){
+  navigator.clipboard.writeText(document.getElementById("poses").textContent)
+    .then(()=>log("# poses copied to clipboard"))
+    .catch(()=>log("! clipboard blocked","er"));
+}
+
+JOINTS.forEach((j,i)=>paintCmd(i));
+paintActual(); refreshLocks();
+log("# select a command set, pick your baud rate, then connect");
+log("# close the Arduino IDE serial monitor first — only one program can hold the port");
+</script>
+</body>
+</html>
